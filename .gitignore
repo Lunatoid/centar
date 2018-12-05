@@ -19,7 +19,7 @@ deps/
 *.exe
 *.dll
 *.lib
-
+*.bat
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
