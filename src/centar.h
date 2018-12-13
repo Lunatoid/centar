@@ -20,15 +20,14 @@
 #  define CENTAR_FREE(ptr) free(ptr)
 #endif
 
-// If in C++ define CENTAR_BOOL as bool, if in C define CENTAR_BOOL as uint8_t
-#ifndef CENTAR_BOOL
+// If in C++ define CTAR_BOOL as bool, if in C define CTAR_BOOL as uint8_t
+#ifndef CTAR_BOOL
 #  ifndef __cplusplus
-#    define CENTAR_BOOL uint8_t
+#    define CTAR_BOOL uint8_t
 #  else
-#    define CENTAR_BOOL bool
+#    define CTAR_BOOL bool
 #  endif
 #endif
-
 
 #ifdef CENTAR_STATIC
 #  ifdef __cplusplus
@@ -59,7 +58,7 @@ typedef struct Tar {
 } Tar;
 
 // Parses a tar file
-CTAR_API CENTAR_BOOL ctar_parse(const char* path, Tar* out);
+CTAR_API CTAR_BOOL ctar_parse(const char* path, Tar* out);
 
 // Frees a tar file
 CTAR_API void ctar_free(Tar* tar);
@@ -70,17 +69,23 @@ CTAR_API TarHeader* ctar_find(Tar* tar, const char* name);
 
 // Allocates a block of memory and writes the file from the tar archive into it
 CTAR_API char* ctar_read(Tar* tar, const char* name,
-                         long int* file_size, CENTAR_BOOL null_terminated);
+                         long int* file_size, CTAR_BOOL null_terminated);
 
 // Writes the file from the tar archive into a block of memory
-CTAR_API void ctar_read_into(Tar* tar, const char* name, char* memory,
-                             long int* file_size, CENTAR_BOOL null_terminated);
+CTAR_API CTAR_BOOL ctar_read_into(Tar* tar, const char* name, char* memory,
+                                  long int* file_size, CTAR_BOOL null_terminated);
+
+// Renames a given file from the tar archive
+CTAR_API void ctar_rename(Tar* tar, const char* name, const char* new_name);
+
+// Writes an already existing tar archive
+CTAR_API void ctar_export(Tar* tar, const char* path);
 
 // Prepare for writing files
 CTAR_API FILE* ctar_begin_write(const char* path);
 
 // Write a file
-CTAR_API CENTAR_BOOL ctar_write(FILE* file, const char* name, char* memory, long int memory_size); 
+CTAR_API CTAR_BOOL ctar_write(FILE* file, const char* name, char* memory, long int memory_size); 
 
 // Stop writing
 CTAR_API void ctar_end_write(FILE* file);
@@ -126,11 +131,10 @@ CTAR_API TarHeader ctar_parse_raw(TarHeaderRaw* raw) {
   return header;
 };
 
-CTAR_API CENTAR_BOOL ctar_parse(const char* path, Tar* out) {
+CTAR_API CTAR_BOOL ctar_parse(const char* path, Tar* out) {
   FILE* file = fopen(path, "rb");
   
   if (!file) {
-    printf("Error opening file '%s'\n", path);
     return 0;
   }
   
@@ -205,7 +209,7 @@ CTAR_API TarHeader* ctar_find(Tar* tar, const char* name) {
 }
 
 CTAR_API char* ctar_read(Tar* tar, const char* name,
-                         long int* file_size, CENTAR_BOOL null_terminated) {
+                         long int* file_size, CTAR_BOOL null_terminated) {
   if (!tar || !name) return NULL;
   
   TarHeader* t = ctar_find(tar, name);
@@ -217,18 +221,20 @@ CTAR_API char* ctar_read(Tar* tar, const char* name,
   char* memory = (char*)CENTAR_MALLOC(memory_size);
   
   // Read into created memory block
-  ctar_read_into(tar, name, memory, file_size, null_terminated);
+  if (ctar_read_into(tar, name, memory, file_size, null_terminated) == 0) {
+    return NULL;
+  }
   
   return memory;
 }
 
-CTAR_API void ctar_read_into(Tar* tar, const char* name, char* memory,
-                             long int* file_size, CENTAR_BOOL null_terminated) {
-  if (!tar || !name || !memory) return;
+CTAR_API CTAR_BOOL ctar_read_into(Tar* tar, const char* name, char* memory,
+                                  long int* file_size, CTAR_BOOL null_terminated) {
+  if (!tar || !name || !memory) return 0;
   
   TarHeader* t = ctar_find(tar, name);
   
-  if (!t) return;
+  if (!t) return 0;
   
   if (file_size) {
     *file_size = t->file_size + ((null_terminated != 0) ? 1 : 0);
@@ -236,7 +242,7 @@ CTAR_API void ctar_read_into(Tar* tar, const char* name, char* memory,
   
   FILE* file = fopen(tar->path, "rb");
   
-  if (!file) return;
+  if (!file) return 0;
   
   fseek(file, t->position, SEEK_SET);
   fread(memory, t->file_size, 1, file);
@@ -246,6 +252,33 @@ CTAR_API void ctar_read_into(Tar* tar, const char* name, char* memory,
   if (null_terminated != 0) {
     memory[t->file_size] = '\0';
   }
+  
+  return 1;
+}
+
+CTAR_API void ctar_rename(Tar* tar, const char* name, const char* new_name) {
+  if (!tar || !name || !new_name) return;
+  
+  TarHeader* t = ctar_find(tar, name);
+  
+  if (!t) return;
+  
+  strncpy(t->name, new_name, 100);
+}
+
+CTAR_API void ctar_export(Tar* tar, const char* path) {
+  if (!tar || !path) return;
+  
+  FILE* out = ctar_begin_write(path);
+  
+  for (TarHeader* t = tar->header; t != NULL; t = t->next) {
+    char* tmp = ctar_read(tar, t->name, NULL, 0);
+    
+    ctar_write(out, t->name, tmp, t->file_size);
+    free(tmp);
+  }
+  
+  ctar_end_write(out);
 }
 
 CTAR_API FILE* ctar_begin_write(const char* path) {
@@ -256,7 +289,7 @@ CTAR_API FILE* ctar_begin_write(const char* path) {
   return file;
 }
 
-CTAR_API CENTAR_BOOL ctar_write(FILE* file, const char* name, char* memory, long int memory_size) {
+CTAR_API CTAR_BOOL ctar_write(FILE* file, const char* name, char* memory, long int memory_size) {
   if (!file || !name || !memory) return 0;
   
   TarHeaderRaw header = {0};

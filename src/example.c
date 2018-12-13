@@ -33,6 +33,9 @@ int main() {
     free(data);
   }
   
+  ctar_rename(&tar, "file_1.txt", "renamed.txt");
+  ctar_export(&tar, "export2.tar");
+  
   ctar_free(&tar);
   
   return 0;
