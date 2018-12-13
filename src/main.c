@@ -1,12 +1,13 @@
 
 #define CENTAR_IMPLEMENTATION
+#define CENTAR_STATIC
 #include "centar.h"
 
 #define IS_OPTION(opt, short_opt, long_opt) (strcmp((opt), (short_opt)) == 0 || strcmp((opt), (long_opt)) == 0)
 
 int main(int argc, char** argv) {
   
-  CTAR_BOOL show_help = argc < 3;
+  CENTAR_BOOL show_help = argc < 3;
   if (argc >= 3) {
     char* tar_file = argv[1];
     
@@ -109,7 +110,7 @@ int main(int argc, char** argv) {
       FILE* out = ctar_begin_write(tmp_file);
       
       for (TarHeader* t = tar.header; t != NULL; t = t->next) {
-        CTAR_BOOL should_add = 1;
+        CENTAR_BOOL should_add = 1;
         
         // Check if this needs to be deleted
         for (int i = 3; i < argc; ++i) {
