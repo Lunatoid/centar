@@ -100,16 +100,16 @@
 #  endif
 #endif
 
-typedef struct TarHeader {
+typedef struct _TarHeader {
   char name[100];
   uint64_t file_size;
   time_t last_modified;
   
   uint64_t position;
-  struct TarHeader* next;
+  struct _TarHeader* next;
 } TarHeader;
 
-typedef struct Tar {
+typedef struct {
   char path[512];
   TarHeader* header;
 } Tar;
@@ -248,7 +248,7 @@ CENTAR_API void ctar_free(Tar* tar) {
   TarHeader* tmp;
   while (head) {
     tmp = head;
-    head = head->next;
+    head = (TarHeader*)head->next;
     CENTAR_FREE(tmp);
   }
 }
