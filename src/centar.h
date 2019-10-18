@@ -399,7 +399,7 @@ This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - zlib License
 
-(C) Copyright 2018 Tom Mol
+(C) Copyright 2018-2019 Tom Mol
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages
